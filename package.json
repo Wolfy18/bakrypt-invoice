@@ -10,6 +10,12 @@
   "exports": {
     "./bakrypt-invoice.js": "./dist/src/bakrypt-invoice.js"
   },
+  "files": [
+    "dist",
+    "index.html",
+    "README.md",
+    "package.json"
+  ],
   "scripts": {
     "lint": "eslint --ext .ts,.html . --ignore-path .gitignore && prettier \"**/*.ts\" --check --ignore-path .gitignore",
     "format": "eslint --ext .ts,.html . --fix --ignore-path .gitignore && prettier \"**/*.ts\" --write --ignore-path .gitignore",

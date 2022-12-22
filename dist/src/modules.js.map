@@ -1,0 +1,1 @@
+{"version":3,"file":"modules.js","sourceRoot":"","sources":["../../src/modules.ts"],"names":[],"mappings":"","sourcesContent":["declare module '@shoelace-style/shoelace/dist/themes/light.styles.js';\r\n"]}
