@@ -4,14 +4,46 @@ import shoeStyles from '@shoelace-style/shoelace/dist/themes/light.styles.js';
 import { useStyles } from './hooks/useStyles.js';
 import { ITransaction } from './types.js';
 
-import '@shoelace-style/shoelace/dist/components/input/input.js';
-import '@shoelace-style/shoelace/dist/components/textarea/textarea.js';
-import '@shoelace-style/shoelace/dist/components/divider/divider.js';
-import '@shoelace-style/shoelace/dist/components/details/details.js';
-import '@shoelace-style/shoelace/dist/components/qr-code/qr-code.js';
-import '@shoelace-style/shoelace/dist/components/alert/alert.js';
-import '@shoelace-style/shoelace/dist/components/badge/badge.js';
-import '@shoelace-style/shoelace/dist/components/button/button.js';
+import SlInput from '@shoelace-style/shoelace/dist/components/input/input.js';
+import SlTextarea from '@shoelace-style/shoelace/dist/components/textarea/textarea.js';
+import SlDivider from '@shoelace-style/shoelace/dist/components/divider/divider.js';
+import SlDetails from '@shoelace-style/shoelace/dist/components/details/details.js';
+import SlQrCode from '@shoelace-style/shoelace/dist/components/qr-code/qr-code.js';
+import SlAlert from '@shoelace-style/shoelace/dist/components/alert/alert.js';
+import SlBadge from '@shoelace-style/shoelace/dist/components/badge/badge.js';
+import SlButton from '@shoelace-style/shoelace/dist/components/button/button.js';
+
+if (!customElements.get('sl-input')) {
+  customElements.define('sl-input', SlInput);
+}
+
+if (!customElements.get('sl-textarea')) {
+  customElements.define('sl-textarea', SlTextarea);
+}
+
+if (!customElements.get('sl-divider')) {
+  customElements.define('sl-divider', SlDivider);
+}
+
+if (!customElements.get('sl-details')) {
+  customElements.define('sl-details', SlDetails);
+}
+
+if (!customElements.get('sl-alert')) {
+  customElements.define('sl-alert', SlAlert);
+}
+
+if (!customElements.get('sl-badge')) {
+  customElements.define('sl-badge', SlBadge);
+}
+
+if (!customElements.get('sl-button')) {
+  customElements.define('sl-button', SlButton);
+}
+
+if (!customElements.get('sl-qr-code')) {
+  customElements.define('sl-qr-code', SlQrCode);
+}
 
 function BakryptInvoice(
   this: any,
