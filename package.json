@@ -7,9 +7,6 @@
   "type": "module",
   "main": "dist/src/bakrypt-invoice.js",
   "module": "dist/src/bakrypt-invoice.js",
-  "exports": {
-    "./bakrypt-invoice.js": "./dist/src/bakrypt-invoice.js"
-  },
   "files": [
     "dist",
     "index.html",
