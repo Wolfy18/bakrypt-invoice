@@ -1,8 +1,8 @@
 <p align="center">
-  <img width="200" src="https://open-wc.org/hero.png"></img>
+  <img width="200" src="https://bakrypt.io/static/assets/images/bakrypt-logo-light.svg"></img>
 </p>
 
-## Open-wc Starter App
+## Bakrypt invoice web component
 
 [![Built with open-wc recommendations](https://img.shields.io/badge/built%20with-open--wc-blue.svg)](https://github.com/open-wc)
 
@@ -11,8 +11,10 @@
 To get started:
 
 ```sh
-npm init @open-wc
+npm install
 # requires node 10 & npm 6 or higher
+
+npm start
 ```
 
 ## Scripts
