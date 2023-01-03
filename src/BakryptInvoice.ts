@@ -1,8 +1,6 @@
 import { html, css } from 'lit';
 import { useEffect } from 'haunted';
 import shoeStyles from '@shoelace-style/shoelace/dist/themes/light.styles.js';
-import { useStyles } from './hooks/useStyles.js';
-import { ITransaction } from './types.js';
 
 import SlInput from '@shoelace-style/shoelace/dist/components/input/input.js';
 import SlTextarea from '@shoelace-style/shoelace/dist/components/textarea/textarea.js';
@@ -12,6 +10,8 @@ import SlQrCode from '@shoelace-style/shoelace/dist/components/qr-code/qr-code.j
 import SlAlert from '@shoelace-style/shoelace/dist/components/alert/alert.js';
 import SlBadge from '@shoelace-style/shoelace/dist/components/badge/badge.js';
 import SlButton from '@shoelace-style/shoelace/dist/components/button/button.js';
+import { ITransaction } from './types.js';
+import { useStyles } from './hooks/useStyles.js';
 
 if (!customElements.get('sl-input')) {
   customElements.define('sl-input', SlInput);
@@ -63,6 +63,7 @@ function BakryptInvoice(
     canceled: 'danger',
     burning: 'warning',
     royalties: 'warning',
+    processing: 'warning',
     refund: 'warning',
     confirmed: 'success',
     'stand-by': 'success',
@@ -139,56 +140,66 @@ function BakryptInvoice(
           filled
         ></sl-input>
 
-        <div
-          style="display:grid; grid-template-columns: repeat(auto-fit, minmax(305px, 1fr)); grid-gap: 0.5rem; align-items:center; margin-bottom: 2rem"
-        >
-          <sl-details
-            summary="Click here to show a QR Code and scan the deposit address."
-          >
-            <div style="text-align:center">
-              <sl-qr-code
-                value=${transaction
-                  ? (<ITransaction>transaction).deposit_address
-                  : 'Not found'}
-                label="Scan this code for the deposit_address!"
-              ></sl-qr-code>
-            </div>
-          </sl-details>
-          <sl-alert variant="warning" open>
-            <strong>DO NOT TRANSFER FUNDS FROM AN EXCHANGE!</strong> <br />
-            We will send all tokens and change to the payor's address; meaning
-            that the payment must be done from a wallet that you can control and
-            its capable of manage native tokens on Cardano like
-            <a target="_blank" rel="nofollow" href="https://namiwallet.io/"
-              >Nami</a
-            >,
-            <a target="_blank" rel="nofollow" href="https://flint-wallet.com/"
-              >Flint</a
-            >,
-            <a
-              target="_blank"
-              rel="nofollow"
-              href="https://yoroi-wallet.com/#/"
+        ${transaction &&
+        !['confirmed', 'canceled'].includes((<ITransaction>transaction).status)
+          ? html` <div
+              style="display:grid; grid-template-columns: repeat(auto-fit, minmax(305px, 1fr)); grid-gap: 0.5rem; align-items:center; margin-bottom: 2rem"
             >
-              Yoroi</a
-            >,
-            <a target="_blank" rel="nofollow" href="https://daedaluswallet.io/"
-              >Daedalus</a
-            >
-            or
-            <a
-              target="_blank"
-              rel="nofollow"
-              href="https://ccvault.io/app/mainnet/welcome"
-              >Eternl</a
-            >
-          </sl-alert>
-        </div>
+              <sl-details
+                summary="Click here to show a QR Code and scan the deposit address."
+              >
+                <div style="text-align:center">
+                  <sl-qr-code
+                    value=${transaction
+                      ? (<ITransaction>transaction).deposit_address
+                      : 'Not found'}
+                    label="Scan this code for the deposit_address!"
+                  ></sl-qr-code>
+                </div>
+              </sl-details>
+              <sl-alert variant="warning" open>
+                <strong>DO NOT TRANSFER FUNDS FROM AN EXCHANGE!</strong> <br />
+                We will send all tokens and change to the payor's address;
+                meaning that the payment must be done from a wallet that you can
+                control and its capable of manage native tokens on Cardano like
+                <a target="_blank" rel="nofollow" href="https://namiwallet.io/"
+                  >Nami</a
+                >,
+                <a
+                  target="_blank"
+                  rel="nofollow"
+                  href="https://flint-wallet.com/"
+                  >Flint</a
+                >,
+                <a
+                  target="_blank"
+                  rel="nofollow"
+                  href="https://yoroi-wallet.com/#/"
+                >
+                  Yoroi</a
+                >,
+                <a
+                  target="_blank"
+                  rel="nofollow"
+                  href="https://daedaluswallet.io/"
+                  >Daedalus</a
+                >
+                or
+                <a
+                  target="_blank"
+                  rel="nofollow"
+                  href="https://ccvault.io/app/mainnet/welcome"
+                  >Eternl</a
+                >
+              </sl-alert>
+            </div>`
+          : null}
 
         <h4 style="color: var(--sl-color-warning-600);">
           Payment Type: ${transaction ? (<ITransaction>transaction).type : null}
         </h4>
-        ${transaction && (<ITransaction>transaction).status !== 'confirmed'
+        ${transaction &&
+        !['confirmed', 'canceled'].includes((<ITransaction>transaction).status)
           ? html` <sl-input
               maxlength="255"
               type="number"
@@ -200,12 +211,13 @@ function BakryptInvoice(
           : html` <sl-input
               maxlength="255"
               type="number"
-              label="Cost"
+              label="Min. Processing Cost"
               value=${transaction ? (<ITransaction>transaction).cost : ''}
               readonly
               filled
             ></sl-input>`}
-        ${transaction && (<ITransaction>transaction).status !== 'confirmed'
+        ${transaction &&
+        !['confirmed', 'canceled'].includes((<ITransaction>transaction).status)
           ? html` <small style="float:right">Click to copy</small
               ><sl-input
                 maxlength="255"
@@ -302,119 +314,133 @@ function BakryptInvoice(
           </p>
 
           <sl-divider></sl-divider>
-          <h4>Minting Summary</h4>
-          <p>
-            <small
-              ><i
-                >You must send the minimum amount of ADA shown above. Any change
-                will be returned automatically to the payor's wallet.</i
-              ></small
-            ><br /><br />
-            <small><i>**Tokens are returned to the payor's wallet.</i></small>
-          </p>
+          ${collection && collection.length
+            ? html` <h4>Minting Summary</h4>
+                <p>
+                  <small
+                    ><i
+                      >You must send the minimum amount of ADA shown above. Any
+                      change will be returned automatically to the payor's
+                      wallet.</i
+                    ></small
+                  ><br /><br />
+                  <small
+                    ><i>**Tokens are returned to the payor's wallet.</i></small
+                  >
+                </p>
 
-          <table style="text-align:left; width: 100%">
-            <thead>
-              <tr>
-                <th>Item</th>
-                <th>Qty</th>
-                <th>Price</th>
-                <th>Total</th>
-              </tr>
-            </thead>
-            <tbody>
-              <tr>
-                <td>
-                  <p>** Bond per Asset.<br /></p>
-                </td>
-                <td>${collection ? collection.length : null}</td>
-                <td>1.95</td>
-                <td>
-                  ${collection ? (collection.length * 1.95).toFixed(2) : null}
-                </td>
-              </tr>
-
-              <tr>
-                <td>
-                  <p>** Surety Bond.</p>
-                </td>
-                <td>1</td>
-                <td>
-                  ${transaction ? (<ITransaction>transaction).surety_bond : ''}
-                </td>
-                <td>
-                  ${transaction ? (<ITransaction>transaction).surety_bond : ''}
-                </td>
-              </tr>
-              ${transaction && (<ITransaction>transaction).has_royalties
-                ? html`<tr>
+                <table style="text-align:left; width: 100%">
+                  <thead>
+                    <tr>
+                      <th>Item</th>
+                      <th>Qty</th>
+                      <th>Price</th>
+                      <th>Total</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    <tr>
                       <td>
-                        <p>Royalties Bond.**<br /></p>
+                        <p>** Bond per Asset.<br /></p>
+                      </td>
+                      <td>${collection ? collection.length : null}</td>
+                      <td>1.95</td>
+                      <td>
+                        ${collection
+                          ? (collection.length * 1.95).toFixed(2)
+                          : null}
+                      </td>
+                    </tr>
+
+                    <tr>
+                      <td>
+                        <p>** Surety Bond.</p>
                       </td>
                       <td>1</td>
                       <td>
                         ${transaction
-                          ? (<ITransaction>transaction).royalties_estimated_cost
+                          ? (<ITransaction>transaction).surety_bond
                           : ''}
                       </td>
                       <td>
                         ${transaction
-                          ? (<ITransaction>transaction).royalties_estimated_cost
+                          ? (<ITransaction>transaction).surety_bond
                           : ''}
                       </td>
                     </tr>
+                    ${transaction && (<ITransaction>transaction).has_royalties
+                      ? html`<tr>
+                            <td>
+                              <p>Royalties Bond.**<br /></p>
+                            </td>
+                            <td>1</td>
+                            <td>
+                              ${transaction
+                                ? (<ITransaction>transaction)
+                                    .royalties_estimated_cost
+                                : ''}
+                            </td>
+                            <td>
+                              ${transaction
+                                ? (<ITransaction>transaction)
+                                    .royalties_estimated_cost
+                                : ''}
+                            </td>
+                          </tr>
+                          <tr>
+                            <td>
+                              <p><strong>Royalties Blockchain Fee</strong></p>
+                            </td>
+                            <td>1</td>
+                            <td>
+                              ${transaction
+                                ? (<ITransaction>transaction).blockchain_fee
+                                : ''}
+                            </td>
+                            <td>
+                              ${transaction
+                                ? (<ITransaction>transaction).blockchain_fee
+                                : ''}
+                            </td>
+                          </tr>`
+                      : null}
                     <tr>
                       <td>
-                        <p><strong>Royalties Blockchain Fee</strong></p>
+                        <p><strong>Convenience Fee</strong></p>
                       </td>
-                      <td>1</td>
+                      <td>${collection ? collection.length : null}</td>
                       <td>
                         ${transaction
-                          ? (<ITransaction>transaction).blockchain_fee
+                          ? (<ITransaction>transaction).convenience_fee
                           : ''}
                       </td>
                       <td>
                         ${transaction
-                          ? (<ITransaction>transaction).blockchain_fee
+                          ? (<ITransaction>transaction).convenience_fee
                           : ''}
                       </td>
-                    </tr>`
-                : null}
-              <tr>
-                <td>
-                  <p><strong>Convenience Fee</strong></p>
-                </td>
-                <td>${collection ? collection.length : null}</td>
-                <td>
-                  ${transaction
-                    ? (<ITransaction>transaction).convenience_fee
-                    : ''}
-                </td>
-                <td>
-                  ${transaction
-                    ? (<ITransaction>transaction).convenience_fee
-                    : ''}
-                </td>
-              </tr>
+                    </tr>
 
-              <tr>
-                <td>
-                  <p><strong>Blockchain Fee</strong></p>
-                </td>
-                <td>2</td>
-                <td>
-                  ${transaction
-                    ? (<ITransaction>transaction).blockchain_fee
-                    : ''}
-                </td>
-                <td>
-                  ${transaction
-                    ? Number((<ITransaction>transaction).blockchain_fee) * 2
-                    : ''}
-                </td>
-              </tr>
-            </tbody>
-          </table>
+                    <tr>
+                      <td>
+                        <p><strong>Blockchain Fee</strong></p>
+                      </td>
+                      <td>2</td>
+                      <td>
+                        ${transaction
+                          ? (<ITransaction>transaction).blockchain_fee
+                          : ''}
+                      </td>
+                      <td>
+                        ${transaction
+                          ? Number((<ITransaction>transaction).blockchain_fee) *
+                            2
+                          : ''}
+                      </td>
+                    </tr>
+                  </tbody>
+                </table>`
+            : null}
         </div>
       </div>
       <sl-divider></sl-divider>
@@ -433,13 +459,15 @@ function BakryptInvoice(
           : null}
         ${transaction &&
         (<ITransaction>transaction).status &&
-        (<ITransaction>transaction).status !== 'confirmed'
+        !['confirmed', 'canceled'].includes((<ITransaction>transaction).status)
           ? html`
               <sl-button
                 variant="warning"
                 outline
                 @click=${() => {
-                  if (confirm('Would you like to refund the transaction?')) {
+                  if (
+                    window.confirm('Would you like to refund the transaction?')
+                  ) {
                     refund();
                   }
                 }}
