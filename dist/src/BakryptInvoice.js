@@ -1,7 +1,6 @@
 import { html, css } from 'lit';
 import { useEffect } from 'haunted';
 import shoeStyles from '@shoelace-style/shoelace/dist/themes/light.styles.js';
-import { useStyles } from './hooks/useStyles.js';
 import SlInput from '@shoelace-style/shoelace/dist/components/input/input.js';
 import SlTextarea from '@shoelace-style/shoelace/dist/components/textarea/textarea.js';
 import SlDivider from '@shoelace-style/shoelace/dist/components/divider/divider.js';
@@ -10,6 +9,7 @@ import SlQrCode from '@shoelace-style/shoelace/dist/components/qr-code/qr-code.j
 import SlAlert from '@shoelace-style/shoelace/dist/components/alert/alert.js';
 import SlBadge from '@shoelace-style/shoelace/dist/components/badge/badge.js';
 import SlButton from '@shoelace-style/shoelace/dist/components/button/button.js';
+import { useStyles } from './hooks/useStyles.js';
 if (!customElements.get('sl-input')) {
     customElements.define('sl-input', SlInput);
 }
