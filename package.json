@@ -3,7 +3,7 @@
   "description": "Webcomponent bakrypt-invoice following open-wc recommendations",
   "license": "MIT",
   "author": "bakrypt-invoice",
-  "version": "1.0.3",
+  "version": "1.0.4",
   "type": "module",
   "main": "dist/src/bakrypt-invoice.js",
   "module": "dist/src/bakrypt-invoice.js",
