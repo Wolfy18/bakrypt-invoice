@@ -553,7 +553,7 @@ function BakryptInvoice({ transaction = undefined, collection = undefined, acces
       <div>
         ${transactionObj &&
         transactionObj.status &&
-        ['rejected', 'error', 'canceled'].includes(transactionObj.status)
+        ['rejected', 'error'].includes(transactionObj.status)
         ? html `
               <sl-button
                 variant="primary"
@@ -565,7 +565,7 @@ function BakryptInvoice({ transaction = undefined, collection = undefined, acces
         : null}
         ${transactionObj &&
         transactionObj.status &&
-        !['confirmed', 'canceledf'].includes(transactionObj.status)
+        !['confirmed', 'canceled'].includes(transactionObj.status)
         ? html `
               <sl-button
                 variant="warning"
