@@ -6,12 +6,14 @@ declare function BakryptInvoice(
     transaction,
     collection,
     accessToken,
+    csrfToken,
     testnet,
   }: {
     transaction: ITransaction | undefined;
     collection: [] | undefined;
     accessToken: AccessToken | undefined;
     testnet: string;
+    csrfToken: string | undefined;
   }
 ): import('lit-html').TemplateResult<1>;
 export default BakryptInvoice;

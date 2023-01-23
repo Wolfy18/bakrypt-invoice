@@ -34,7 +34,7 @@ if (!customElements.get('sl-button')) {
 if (!customElements.get('sl-qr-code')) {
     customElements.define('sl-qr-code', SlQrCode);
 }
-function BakryptInvoice({ transaction = undefined, collection = undefined, accessToken = undefined, testnet, }) {
+function BakryptInvoice({ transaction = undefined, collection = undefined, accessToken = undefined, csrfToken = undefined, testnet, }) {
     const bakryptURI = testnet
         ? 'https://testnet.bakrypt.io'
         : 'https://bakrypt.io';
@@ -52,6 +52,7 @@ function BakryptInvoice({ transaction = undefined, collection = undefined, acces
         preauth: 'primary',
     };
     const [transactionObj, setTransaction] = useState();
+    const [requestLoading, setRequestLoading] = useState(false);
     useStyles(this, [
         shoeStyles,
         css `
@@ -80,22 +81,22 @@ function BakryptInvoice({ transaction = undefined, collection = undefined, acces
         });
         this.dispatchEvent(event);
     };
-    const retry = () => {
-        const event = new CustomEvent('retryTransaction', {
-            bubbles: true,
-            composed: true,
-            detail: { tx: transaction },
-        });
-        this.dispatchEvent(event);
-    };
-    const refund = () => {
-        const event = new CustomEvent('refundTransaction', {
-            bubbles: true,
-            composed: true,
-            detail: { tx: transaction },
-        });
-        this.dispatchEvent(event);
-    };
+    // const retry = () => {
+    //   const event = new CustomEvent('retryTransaction', {
+    //     bubbles: true,
+    //     composed: true,
+    //     detail: { tx: transaction },
+    //   });
+    //   this.dispatchEvent(event);
+    // };
+    // const refund = () => {
+    //   const event = new CustomEvent('refundTransaction', {
+    //     bubbles: true,
+    //     composed: true,
+    //     detail: { tx: transaction },
+    //   });
+    //   this.dispatchEvent(event);
+    // };
     // Retrieve transaction information
     const retrieveTransaction = async (uuid) => {
         let tx;
@@ -136,6 +137,74 @@ function BakryptInvoice({ transaction = undefined, collection = undefined, acces
         }
         return tx;
     };
+    // Submit collection to the assets API
+    const submitRetry = async (Tx) => {
+        try {
+            const requestHeaders = {
+                'content-type': 'application/json',
+                Authorization: `Bearer ${accessToken}`,
+            };
+            if (csrfToken && csrfToken.length > 0) {
+                requestHeaders['X-CSRFToken'] = csrfToken;
+            }
+            const submitRetryRequest = await fetch(`${bakryptURI}/v1/transactions/${Tx.uuid}/mint/`, {
+                method: 'POST',
+                headers: requestHeaders,
+            });
+            if (submitRetryRequest.ok) {
+                await submitRetryRequest.json();
+                notify('Request was submitted', 'success');
+                // console.log(jsonResponse);
+            }
+            else {
+                const jsonResponse = await submitRetryRequest.json();
+                if (jsonResponse.error_description)
+                    notify(jsonResponse.error_description, 'danger');
+                else if (jsonResponse.error)
+                    notify(jsonResponse.error, 'danger');
+                else if (jsonResponse.detail)
+                    notify(jsonResponse.detail, 'danger');
+            }
+        }
+        catch (error) {
+            notify(`Unable to submit request. Error: ${error}`, 'danger');
+        }
+    };
+    // Submit collection to the assets API
+    const submitRefund = async (Tx) => {
+        setRequestLoading(true);
+        try {
+            const requestHeaders = {
+                'content-type': 'application/json',
+                Authorization: `Bearer ${accessToken}`,
+            };
+            if (csrfToken && csrfToken.length > 0) {
+                requestHeaders['X-CSRFToken'] = csrfToken;
+            }
+            const submitRefundRequest = await fetch(`${bakryptURI}/v1/transactions/${Tx.uuid}/refund/`, {
+                method: 'POST',
+                headers: requestHeaders,
+            });
+            if (submitRefundRequest.ok) {
+                await submitRefundRequest.json();
+                notify('Refund was submitted', 'success');
+                // console.log(jsonResponse);
+            }
+            else {
+                const jsonResponse = await submitRefundRequest.json();
+                if (jsonResponse.error_description)
+                    notify(jsonResponse.error_description, 'danger');
+                else if (jsonResponse.error)
+                    notify(jsonResponse.error, 'danger');
+                else if (jsonResponse.detail)
+                    notify(jsonResponse.detail, 'danger');
+            }
+        }
+        catch (error) {
+            notify(`Unable to refund request. Error: ${error}`, 'danger');
+        }
+        setRequestLoading(false);
+    };
     useEffect(() => {
         if (transaction) {
             setTransaction(transaction);
@@ -144,6 +213,17 @@ function BakryptInvoice({ transaction = undefined, collection = undefined, acces
         }
     }, [transaction, collection]);
     return html `
+    <!-- Spinner loader overlay -->
+    ${requestLoading
+        ? html `
+          <sl-spinner
+            style="position:absolute; right: 2rem; --track-width: 5px; font-size: 1.5rem"
+          ></sl-spinner>
+        `
+        : null}
+    ${requestLoading
+        ? html ` <div part="overlay" class="dialog__overlay" tabindex="-1"></div> `
+        : null}
     <!-- Transaction Dialog -->
     <div style="padding: 1rem">
       <div
@@ -473,26 +553,26 @@ function BakryptInvoice({ transaction = undefined, collection = undefined, acces
       <div>
         ${transactionObj &&
         transactionObj.status &&
-        ['rejected', 'error'].includes(transactionObj.status)
+        ['rejected', 'error', 'canceled'].includes(transactionObj.status)
         ? html `
               <sl-button
                 variant="primary"
                 style="margin-right:1rem"
-                @click=${retry}
+                @click=${() => submitRetry(transactionObj)}
                 >Retry</sl-button
               >
             `
         : null}
         ${transactionObj &&
         transactionObj.status &&
-        !['confirmed', 'canceled'].includes(transactionObj.status)
+        !['confirmed', 'canceledf'].includes(transactionObj.status)
         ? html `
               <sl-button
                 variant="warning"
                 outline
                 @click=${() => {
             if (window.confirm('Would you like to refund the transaction?')) {
-                refund();
+                submitRefund(transactionObj);
             }
         }}
                 style=""
