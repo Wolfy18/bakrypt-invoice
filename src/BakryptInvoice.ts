@@ -1,5 +1,5 @@
 import { html, css } from 'lit';
-import { useEffect } from 'haunted';
+import { useEffect, useState } from 'haunted';
 import shoeStyles from '@shoelace-style/shoelace/dist/themes/light.styles.js';
 
 import SlInput from '@shoelace-style/shoelace/dist/components/input/input.js';
@@ -10,7 +10,7 @@ import SlQrCode from '@shoelace-style/shoelace/dist/components/qr-code/qr-code.j
 import SlAlert from '@shoelace-style/shoelace/dist/components/alert/alert.js';
 import SlBadge from '@shoelace-style/shoelace/dist/components/badge/badge.js';
 import SlButton from '@shoelace-style/shoelace/dist/components/button/button.js';
-import { ITransaction } from './types.js';
+import { ITransaction, ErrorResponse, AccessToken } from './types.js';
 import { useStyles } from './hooks/useStyles.js';
 
 if (!customElements.get('sl-input')) {
@@ -50,13 +50,21 @@ function BakryptInvoice(
   {
     transaction = undefined,
     collection = undefined,
+    accessToken = undefined,
+    testnet,
   }: // open = false,
   {
     transaction: ITransaction | undefined;
     collection: [] | undefined;
+    accessToken: AccessToken | undefined;
+    testnet: string;
     // open: boolean;
   }
 ) {
+  const bakryptURI = testnet
+    ? 'https://testnet.bakrypt.io'
+    : 'https://bakrypt.io';
+
   const transactionVariants: { [key: string]: string } = {
     error: 'danger',
     rejected: 'danger',
@@ -70,6 +78,8 @@ function BakryptInvoice(
     waiting: 'primary',
     preauth: 'primary',
   };
+
+  const [transactionObj, setTransaction] = useState<ITransaction>();
 
   useStyles(this, [
     shoeStyles,
@@ -122,7 +132,61 @@ function BakryptInvoice(
     this.dispatchEvent(event);
   };
 
-  useEffect(() => {}, [transaction, collection]);
+  // Retrieve transaction information
+  const retrieveTransaction = async (uuid: string) => {
+    let tx;
+
+    try {
+      const requestHeaders: any = {
+        'content-type': 'application/json',
+        Authorization: `Bearer ${accessToken}`,
+      };
+
+      // if (csrfToken && csrfToken.length > 0) {
+      //   requestHeaders['X-CSRFToken'] = csrfToken;
+      // }
+
+      const retrieveTransactionRequest = await fetch(
+        `${bakryptURI}/v1/transactions/${uuid}/`,
+        {
+          method: 'GET',
+          headers: requestHeaders,
+        }
+      );
+
+      if (retrieveTransactionRequest.ok) {
+        const jsonResponse: ITransaction =
+          await retrieveTransactionRequest.json();
+        setTransaction(jsonResponse);
+        tx = jsonResponse;
+
+        // Repeat call every 15 seconds
+        setTimeout(() => {
+          retrieveTransaction(uuid);
+        }, 10000);
+      } else {
+        const jsonResponse: ErrorResponse =
+          await retrieveTransactionRequest.json();
+        if (jsonResponse.error_description)
+          notify(jsonResponse.error_description, 'danger');
+        else if (jsonResponse.error) notify(jsonResponse.error, 'danger');
+        else if (jsonResponse.detail) notify(jsonResponse.detail, 'danger');
+      }
+    } catch (error) {
+      // console.log(error);
+      notify('Unable to retrieve transaction.', 'danger');
+    }
+
+    return tx;
+  };
+
+  useEffect(() => {
+    if (transaction) {
+      setTransaction(transaction);
+      if (accessToken) retrieveTransaction(transaction.uuid);
+    }
+  }, [transaction, collection]);
+
   return html`
     <!-- Transaction Dialog -->
     <div style="padding: 1rem">
@@ -134,14 +198,18 @@ function BakryptInvoice(
         <sl-input
           maxlength="255"
           label="Policy ID"
-          value=${transaction ? (<ITransaction>transaction).policy_id : ''}
+          value=${transactionObj
+            ? (<ITransaction>transactionObj).policy_id
+            : ''}
           type="text"
           readonly
           filled
         ></sl-input>
 
-        ${transaction &&
-        !['confirmed', 'canceled'].includes((<ITransaction>transaction).status)
+        ${transactionObj &&
+        !['confirmed', 'canceled'].includes(
+          (<ITransaction>transactionObj).status
+        )
           ? html` <div
               style="display:grid; grid-template-columns: repeat(auto-fit, minmax(305px, 1fr)); grid-gap: 0.5rem; align-items:center; margin-bottom: 2rem"
             >
@@ -150,8 +218,8 @@ function BakryptInvoice(
               >
                 <div style="text-align:center">
                   <sl-qr-code
-                    value=${transaction
-                      ? (<ITransaction>transaction).deposit_address
+                    value=${transactionObj
+                      ? (<ITransaction>transactionObj).deposit_address
                       : 'Not found'}
                     label="Scan this code for the deposit_address!"
                   ></sl-qr-code>
@@ -196,15 +264,18 @@ function BakryptInvoice(
           : null}
 
         <h4 style="color: var(--sl-color-warning-600);">
-          Payment Type: ${transaction ? (<ITransaction>transaction).type : null}
+          Payment Type:
+          ${transactionObj ? (<ITransaction>transactionObj).type : null}
         </h4>
-        ${transaction &&
-        !['confirmed', 'canceled'].includes((<ITransaction>transaction).status)
+        ${transactionObj &&
+        !['confirmed', 'canceled'].includes(
+          (<ITransaction>transactionObj).status
+        )
           ? html` <sl-input
               maxlength="255"
               type="number"
               label="Processing Cost"
-              value=${transaction ? (<ITransaction>transaction).cost : ''}
+              value=${transactionObj ? (<ITransaction>transactionObj).cost : ''}
               readonly
               filled
             ></sl-input>`
@@ -212,18 +283,20 @@ function BakryptInvoice(
               maxlength="255"
               type="number"
               label="Min. Processing Cost"
-              value=${transaction ? (<ITransaction>transaction).cost : ''}
+              value=${transactionObj ? (<ITransaction>transactionObj).cost : ''}
               readonly
               filled
             ></sl-input>`}
-        ${transaction &&
-        !['confirmed', 'canceled'].includes((<ITransaction>transaction).status)
+        ${transactionObj &&
+        !['confirmed', 'canceled'].includes(
+          (<ITransaction>transactionObj).status
+        )
           ? html` <small style="float:right">Click to copy</small
               ><sl-input
                 maxlength="255"
                 label="Deposit Address"
-                value=${transaction
-                  ? (<ITransaction>transaction).deposit_address
+                value=${transactionObj
+                  ? (<ITransaction>transactionObj).deposit_address
                   : ''}
                 type="password"
                 readonly
@@ -246,7 +319,7 @@ function BakryptInvoice(
         <sl-input
           maxlength="255"
           label="Transaction UUID"
-          value=${transaction ? (<ITransaction>transaction).uuid : ''}
+          value=${transactionObj ? (<ITransaction>transactionObj).uuid : ''}
           type="text"
           readonly
           filled
@@ -254,8 +327,8 @@ function BakryptInvoice(
         <sl-input
           maxlength="255"
           label="Created on"
-          value=${transaction
-            ? new Date((<ITransaction>transaction).created_on).toUTCString()
+          value=${transactionObj
+            ? new Date((<ITransaction>transactionObj).created_on).toUTCString()
             : ''}
           type="text"
           readonly
@@ -264,8 +337,8 @@ function BakryptInvoice(
         <sl-input
           maxlength="255"
           label="Expires on"
-          value=${transaction
-            ? new Date((<ITransaction>transaction).expires_on).toUTCString()
+          value=${transactionObj
+            ? new Date((<ITransaction>transactionObj).expires_on).toUTCString()
             : ''}
           type="text"
           readonly
@@ -274,8 +347,8 @@ function BakryptInvoice(
         <sl-input
           maxlength="255"
           label="Conv. Fees"
-          value=${transaction
-            ? (<ITransaction>transaction).convenience_fee
+          value=${transactionObj
+            ? (<ITransaction>transactionObj).convenience_fee
             : ''}
           type="text"
           readonly
@@ -303,10 +376,12 @@ function BakryptInvoice(
           <sl-badge
             style="margin-bottom: 2rem; display: grid"
             .pulse=${true}
-            variant=${transaction && (<ITransaction>transaction).status
-              ? transactionVariants[<string>transaction.status]
+            variant=${transactionObj && (<ITransaction>transactionObj).status
+              ? transactionVariants[<string>transactionObj.status]
               : 'neutral'}
-            >${transaction ? (<ITransaction>transaction).status : ''}</sl-badge
+            >${transactionObj
+              ? (<ITransaction>transactionObj).status
+              : ''}</sl-badge
           >
           <p>
             Please do not refresh the page, otherwise this session will be
@@ -358,31 +433,32 @@ function BakryptInvoice(
                       </td>
                       <td>1</td>
                       <td>
-                        ${transaction
-                          ? (<ITransaction>transaction).surety_bond
+                        ${transactionObj
+                          ? (<ITransaction>transactionObj).surety_bond
                           : ''}
                       </td>
                       <td>
-                        ${transaction
-                          ? (<ITransaction>transaction).surety_bond
+                        ${transactionObj
+                          ? (<ITransaction>transactionObj).surety_bond
                           : ''}
                       </td>
                     </tr>
-                    ${transaction && (<ITransaction>transaction).has_royalties
+                    ${transactionObj &&
+                    (<ITransaction>transactionObj).has_royalties
                       ? html`<tr>
                             <td>
                               <p>Royalties Bond.**<br /></p>
                             </td>
                             <td>1</td>
                             <td>
-                              ${transaction
-                                ? (<ITransaction>transaction)
+                              ${transactionObj
+                                ? (<ITransaction>transactionObj)
                                     .royalties_estimated_cost
                                 : ''}
                             </td>
                             <td>
-                              ${transaction
-                                ? (<ITransaction>transaction)
+                              ${transactionObj
+                                ? (<ITransaction>transactionObj)
                                     .royalties_estimated_cost
                                 : ''}
                             </td>
@@ -393,13 +469,13 @@ function BakryptInvoice(
                             </td>
                             <td>1</td>
                             <td>
-                              ${transaction
-                                ? (<ITransaction>transaction).blockchain_fee
+                              ${transactionObj
+                                ? (<ITransaction>transactionObj).blockchain_fee
                                 : ''}
                             </td>
                             <td>
-                              ${transaction
-                                ? (<ITransaction>transaction).blockchain_fee
+                              ${transactionObj
+                                ? (<ITransaction>transactionObj).blockchain_fee
                                 : ''}
                             </td>
                           </tr>`
@@ -410,13 +486,13 @@ function BakryptInvoice(
                       </td>
                       <td>${collection ? collection.length : null}</td>
                       <td>
-                        ${transaction
-                          ? (<ITransaction>transaction).convenience_fee
+                        ${transactionObj
+                          ? (<ITransaction>transactionObj).convenience_fee
                           : ''}
                       </td>
                       <td>
-                        ${transaction
-                          ? (<ITransaction>transaction).convenience_fee
+                        ${transactionObj
+                          ? (<ITransaction>transactionObj).convenience_fee
                           : ''}
                       </td>
                     </tr>
@@ -427,14 +503,15 @@ function BakryptInvoice(
                       </td>
                       <td>2</td>
                       <td>
-                        ${transaction
-                          ? (<ITransaction>transaction).blockchain_fee
+                        ${transactionObj
+                          ? (<ITransaction>transactionObj).blockchain_fee
                           : ''}
                       </td>
                       <td>
-                        ${transaction
-                          ? Number((<ITransaction>transaction).blockchain_fee) *
-                            2
+                        ${transactionObj
+                          ? Number(
+                              (<ITransaction>transactionObj).blockchain_fee
+                            ) * 2
                           : ''}
                       </td>
                     </tr>
@@ -445,9 +522,9 @@ function BakryptInvoice(
       </div>
       <sl-divider></sl-divider>
       <div>
-        ${transaction &&
-        (<ITransaction>transaction).status &&
-        ['rejected', 'error'].includes((<ITransaction>transaction).status)
+        ${transactionObj &&
+        (<ITransaction>transactionObj).status &&
+        ['rejected', 'error'].includes((<ITransaction>transactionObj).status)
           ? html`
               <sl-button
                 variant="primary"
@@ -457,9 +534,11 @@ function BakryptInvoice(
               >
             `
           : null}
-        ${transaction &&
-        (<ITransaction>transaction).status &&
-        !['confirmed', 'canceled'].includes((<ITransaction>transaction).status)
+        ${transactionObj &&
+        (<ITransaction>transactionObj).status &&
+        !['confirmed', 'canceled'].includes(
+          (<ITransaction>transactionObj).status
+        )
           ? html`
               <sl-button
                 variant="warning"
