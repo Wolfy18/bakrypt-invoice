@@ -614,9 +614,7 @@ function BakryptInvoice(
       <div>
         ${transactionObj &&
         (<ITransaction>transactionObj).status &&
-        ['rejected', 'error', 'canceled'].includes(
-          (<ITransaction>transactionObj).status
-        )
+        ['rejected', 'error'].includes((<ITransaction>transactionObj).status)
           ? html`
               <sl-button
                 variant="primary"
@@ -628,7 +626,7 @@ function BakryptInvoice(
           : null}
         ${transactionObj &&
         (<ITransaction>transactionObj).status &&
-        !['confirmed', 'canceledf'].includes(
+        !['confirmed', 'canceled'].includes(
           (<ITransaction>transactionObj).status
         )
           ? html`
